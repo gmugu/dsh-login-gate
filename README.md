@@ -3,8 +3,7 @@
 DeepSeek Harness（DSH）Web GUI 的 Cookie 会话登录门禁插件。
 
 **基线**：`v1.4.5`，自本地插件安装目录 `/vol1/1000/dsh/home/plugins/dsh-login-gate`
-原样导入（见 git 首个提交 `3ddc3cf`，与原文件字节一致）。本工程在其之上做二次开发，
-改动历史以 git 管理；上游基线保持只读，请勿直接修改 `/vol1/1000/dsh/home/plugins/` 下的原目录。
+原样导入（见 git 首个提交 `3ddc3cf`，与原文件字节一致）。本工程在其之上做二次开发。
 
 ## 功能概述
 
@@ -22,7 +21,6 @@ DeepSeek Harness（DSH）Web GUI 的 Cookie 会话登录门禁插件。
 │   ├── index.js    # Host 半：全部服务端逻辑（无构建步骤，纯 ESM JS）
 │   └── client.js   # Client 半：浏览器设置卡片（window.__ModuleLoader__.load 包装）
 ├── package.json    # dsh 插件清单（exports + dsh.client 平台与 inject 声明）
-├── tsconfig.json   # 仅为编辑器 IntelliSense（allowJs、不检查、不产出）
 └── README.md
 ```
 
@@ -136,8 +134,3 @@ rsync -a --delete --exclude node_modules --exclude .git --exclude README.md \
 4. profile `cordis.patch.yml` 的插入项 `id`/`name`；
 5. 避免与原插件同时启用（两个门禁会互相包对方的路由）。
 
-## git 约定
-
-- 首提交 `3ddc3cf` 为上游 v1.4.5 原始字节，永远不要 rebase/修改它，方便随时 `git diff 3ddc3cf` 对比上游；
-- 二次开发的改动都提交在其后；本地仓库身份当前是占位值，可改：
-  `git config user.name "你的名字" && git config user.email "you@example.com"`。
