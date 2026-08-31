@@ -80,6 +80,7 @@ dsh plugin --profile web remove dsh-login-gate
 | `credentialsFile` | `$DSH_HOME/storages/login-gate.json` | 凭据文件路径 |
 | `resetPassword` | `false` | 启动即清除已存密码，回到首次设置 |
 | `trustProxy` | `false` | 位于反向代理后时置 `true`，按 `X-Forwarded-For` 取客户端 IP |
+| `disableBrowserTokenAuth` | `true` | 中和 dsh 内建浏览器令牌鉴权（/api 的 401 与首页令牌交换）；登录门已覆盖身份职责，Host/Origin 信任栅栏（403）始终保留 |
 
 示例：
 
