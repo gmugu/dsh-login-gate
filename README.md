@@ -1,136 +1,100 @@
-# dsh-login-gate（二次开发工程）
+# dsh-login-gate
 
-DeepSeek Harness（DSH）Web GUI 的 Cookie 会话登录门禁插件。
+DeepSeek Harness（DSH）Web GUI 的登录门禁插件——给整个 Web 界面加一道密码登录墙。
 
-**基线**：`v1.4.5`，自本地插件安装目录 `/vol1/1000/dsh/home/plugins/dsh-login-gate`
-原样导入（见 git 首个提交 `3ddc3cf`，与原文件字节一致）。本工程在其之上做二次开发。
+DSH 自带的 webserver 不提供任何鉴权：只要端口可达，任何人都能打开你的 Web GUI。
+本插件在组合层把**全部 HTTP 路由、SPA fallback 和 WebSocket upgrade** 包上一层会话校验：
+未登录的页面访问跳转登录页，API 请求返回 401；插件停用时完整还原，无残留。
 
-## 功能概述
+## 特性
 
 - HMAC-SHA256 签名的过期时间戳会话（HttpOnly、SameSite=Strict Cookie）
-- 异步 scrypt 密码哈希（新密码 N=2^16，旧哈希登录成功后自动升级），永不阻塞事件循环
-- 按 IP 的登录失败限速（15 分钟窗口，5 次失败封 15 分钟）
-- 首次访问无凭据文件时进入「设置访问密码」首次运行流程，浏览器侧选密码、只落盘哈希
-- `login-gate` 设置命名空间（会话时长 / trust-proxy），Web 设置卡片可在线改
-- 鉴权保护的 `/__auth/reset-password`、`/__auth/change-password` 端点 + 设置卡片 UI
+- 异步 scrypt 密码哈希（新密码 N=2^16，旧低成本哈希登录成功后自动升级），不阻塞事件循环
+- 按 IP 的登录失败限速（15 分钟窗口内 5 次失败封禁 15 分钟）
+- 首次访问进入「设置访问密码」首次运行流程——密码在浏览器侧设置，本机只存哈希
+- 「登录门禁」设置卡片：会话时长、修改/重置密码、退出登录，改动在线生效
+- 修改密码自动轮换签名 secret，其他已登录会话立即失效
 
-## 目录结构
+## 安装
 
-```
-├── lib/
-│   ├── index.js    # Host 半：全部服务端逻辑（无构建步骤，纯 ESM JS）
-│   └── client.js   # Client 半：浏览器设置卡片（window.__ModuleLoader__.load 包装）
-├── package.json    # dsh 插件清单（exports + dsh.client 平台与 inject 声明）
-└── README.md
-```
+背景：DSH 把「安装」分成两件事——**装依赖**（pnpm 管）与**接进组合**（`cordis.patch.yml` 管）。
+两种方式装完依赖后都需手动接线（就两行），见「通用收尾」。
 
-没有构建步骤：`lib/` 下的 JS 就是运行时代码，直接被 DSH 加载。
-
-## 架构要点（改代码前先读）
-
-### Host 半（`lib/index.js`）
-
-导出 `name = "login-gate"`、`inject = ["webServer"]`、`Config`、`apply`。
-
-1. **等待组合就绪**：轮询直到 `webServer` 出现 SPA fallback 且至少一条 upgrade 路由
-   （超时 30s 后强行安装），确保包装的是最终 handler。
-2. **注册豁免路由**：`/__auth/login`、`/__auth/logout`（另有两个 *不* 豁免的
-   reset/change 端点，本身受会话保护）。
-3. **包网**：包装已注册的全部路由 handler、fallback、upgrade handler，并打补丁
-   `register/registerUpgrade/registerFallback`，使后续注册的路由同样被门禁；
-   teardown 时全部还原。
-4. **设置命名空间**：`settings` 服务挂载时注册 `login-gate` 命名空间，
-   `ttlHours`/`trustProxy` 可在线生效（持久化在 `$DSH_HOME/settings.yaml`）。
-5. **凭据文件**：默认 `$DSH_HOME/storages/login-gate.json`（salt + scrypt 哈希 +
-   HMAC secret，`0o600`）。删除该文件即回到首次设置流程。
-
-### Client 半（`lib/client.js`）
-
-`window.__ModuleLoader__.load({ id, factory })` 模块格式，`require("react")` 取 React，
-注入 `slots`/`connection`/`remote`/`settingsScope`，在 `settings.section` 插槽注册
-「登录门禁」设置卡片（会话时长、改密、重置、退出登录）。样式通过带
-`data-plugin="dsh-login-gate"` 属性的 `<style>` 注入。
-
-## 开发工作流
-
-### 1. 开发依赖（编辑器智能提示用）
-
-`node_modules/` 已从原插件安装目录原样复制（cordis 4.0.1 / schemastery / cosmokit，
-与上游 lockfile 一致，不入库），开箱即有智能提示。如需重建：
+### 方式一：从本仓库安装（git 依赖）
 
 ```sh
-npm install --ignore-scripts --cache /tmp/.npm-cache   # 本机默认缓存目录不可写时指定可写缓存
+dsh plugin --profile web add github:gmugu/dsh-login-gate
 ```
 
-`devDependencies` 与运行时 peerDependencies 相同（cordis / schemastery）。
-运行时由 DSH 宿主提供这些包，`node_modules/` 不参与运行、不入库。
+### 方式二：tarball（离线/内网）
 
-### 2. 改代码
-
-直接编辑 `lib/index.js` / `lib/client.js`。快速语法检查：
+从 [Releases](https://github.com/gmugu/dsh-login-gate/releases) 下载 tarball 后安装：
 
 ```sh
-node --check lib/index.js
-node --check lib/client.js
-# Host 半加载冒烟（不调用 apply，无副作用）：
-node -e 'await import("./lib/index.js").then(m => console.log(Object.keys(m)))'
+dsh plugin --profile web add /path/to/dsh-login-gate-x.y.z.tgz
 ```
 
-### 3. 让运行中的 DSH 用上改动（改完需重启，二选一）
+### 通用收尾（两种方式都需要）
 
-**方式 A（推荐）：把 profile 的 link 指向本工程**
+编辑 `$DSH_HOME/profiles/web/cordis.patch.yml`（`$DSH_HOME` 默认 `~/.dsh`；若已存在
+`insert:` 列表则把两行并入其中）：
 
-编辑 `/vol1/1000/dsh/home/profiles/web/package.json`：
-
-```json
-"dsh-login-gate": "link:/vol1/1000/dsh/projects/dsh-login-gate"
+```yaml
+- insert:
+    - id: login-gate
+      name: dsh-login-gate
 ```
 
-然后重装并重启：
+重启 `dsh web`，首次访问设置访问密码（至少 8 位）。
 
-```sh
-dsh plugin --profile web install   # 等价于在 profile 目录跑 pnpm install
-# 按你的部署方式重启 dsh web
-```
+> 装了 [dsh-market](https://github.com/dsh-market/dsh-market) 插件市场的机器，待本插件
+> 上架精选目录后可在 设置 → 插件市场 一键安装（依赖+接线全自动）。
 
-此后本工程的每次改动 `git commit` 后重启即生效，原 `/vol1/1000/dsh/home/plugins/dsh-login-gate`
-目录保持原样，可随时回退 link。
+## 首次运行与密码找回
 
-**方式 B：同步到原安装目录（保持 profile 不动）**
+- **首次访问**：出现「设置访问密码」页；仅 scrypt 哈希落盘于
+  `$DSH_HOME/storages/login-gate.json`（权限 `0600`）。
+- **忘记密码**：停止 dsh，删除该凭据文件后重启，即回到首次设置流程。
+- **日常管理**：登录后打开 设置 → 登录门禁。
 
-```sh
-rsync -a --delete --exclude node_modules --exclude .git --exclude README.md \
-  /vol1/1000/dsh/projects/dsh-login-gate/ \
-  /vol1/1000/dsh/home/plugins/dsh-login-gate/
-# 重启 dsh web
-```
+## 配置参考
 
-### 4. 本地测试注意
-
-- 开发期想重走首次设置流程：删除 `$DSH_HOME/storages/login-gate.json`
-  （或在插入项传 `config.resetPassword: true`）。
-- 现网 `settings.yaml` 中已有 `login-gate.ttlHours: 720`，会覆盖 Config 默认值。
-- **本 GUI 本身就在这个插件保护之下**：改坏 host 半且已启用方式 A/B 同步时，
-  重启后可能锁在门外——兜底是删除/改名凭据文件回到首次设置，或从 profile 的
-  `cordis.patch.yml` 暂时移除 `- id: login-gate` 插入项再重启。
-
-## 入口配置（cordis.patch.yml 插入项）
-
-当前 web profile 仅 `insert { id: login-gate, name: dsh-login-gate }`，全走默认：
+`cordis.patch.yml` 插入项可传 `config:`（全部可选）：
 
 | 字段 | 默认 | 说明 |
 |---|---|---|
-| `ttlHours` | 12 | 会话时长（小时），被设置命名空间在线值覆盖 |
+| `ttlHours` | 12 | 会话时长（小时）；设置卡片里的在线值会覆盖它 |
 | `cookieName` | `__dsh_gate` | 会话 Cookie 名 |
 | `credentialsFile` | `$DSH_HOME/storages/login-gate.json` | 凭据文件路径 |
-| `resetPassword` | `false` | 启动即删除已存密码，回到首次设置 |
-| `trustProxy` | `false` | 信任 `X-Forwarded-For`（反代后开启） |
+| `resetPassword` | `false` | 启动即清除已存密码，回到首次设置 |
+| `trustProxy` | `false` | 位于反向代理后时置 `true`，按 `X-Forwarded-For` 取客户端 IP |
 
-## 若要改名分叉（新插件身份）
+示例：
 
-1. `package.json` 的 `name`；
-2. `lib/client.js`：`id: "dsh-login-gate"`、`NS`（设置命名空间）、`data-plugin` 样式属性、CSS 前缀；
-3. `lib/index.js`：`name`（插件名）、设置命名空间字符串 `"login-gate"`（两处）、路由路径可按需改；
-4. profile `cordis.patch.yml` 的插入项 `id`/`name`；
-5. 避免与原插件同时启用（两个门禁会互相包对方的路由）。
+```yaml
+- insert:
+    - id: login-gate
+      name: dsh-login-gate
+      config:
+        ttlHours: 24
+        trustProxy: true
+```
 
+## 安全设计
+
+- 密码只以 scrypt 哈希存储（随机 salt、异步计算、内存上限 128 MiB），明文永不落盘
+- 会话令牌为 HMAC-SHA256 签名的过期时间戳，比较使用 `timingSafeEqual`
+- 登录失败统一延迟响应并按来源 IP 限速
+- `/__auth/reset-password`、`/__auth/change-password` 均需有效会话才能调用
+- 门禁对宿主 webserver 的注册方法打补丁实现全量包网，teardown 时逐项还原
+
+## 开发
+
+- 架构说明与开发流程见 [CONTRIBUTING.md](CONTRIBUTING.md)
+- 本仓库主要由 AI 代理协作开发，代理约定见 [AGENTS.md](AGENTS.md)
+- 无构建步骤：`lib/` 即运行时代码；快速验证 `node --check lib/*.js`
+- 运行时依赖（cordis / schemastery）由 DSH 宿主提供
+
+## 许可
+
+[MIT](LICENSE) © gmugu。基于上游 dsh-login-gate v1.4.5（MIT）二次开发，上游基线见仓库首次提交。

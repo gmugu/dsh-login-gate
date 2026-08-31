@@ -4,6 +4,11 @@
   "description": "Cookie-session login gate for the DeepSeek Harness Web GUI: HMAC-signed sessions, async scrypt hashing with per-IP rate limiting, live settings (session TTL / trust-proxy), and an in-app settings card for resetting and changing the password.",
   "type": "module",
   "main": "lib/index.js",
+  "files": [
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
@@ -21,7 +26,24 @@
       ]
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gmugu/dsh-login-gate.git"
+  },
+  "bugs": "https://github.com/gmugu/dsh-login-gate/issues",
+  "homepage": "https://github.com/gmugu/dsh-login-gate#readme",
+  "author": "gmugu",
   "license": "MIT",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "login",
+    "auth",
+    "security",
+    "web"
+  ],
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/schemastery": "^3.18.1"
