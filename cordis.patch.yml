@@ -1,0 +1,6 @@
+# Bundle patch: mount the plugin row. The row name must match this package
+# name; remove this bundle from the profile bundles list (or uninstall the
+# package) to disable the gate.
+- insert:
+    - id: login-gate
+      name: 'dsh-login-gate'

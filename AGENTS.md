@@ -12,6 +12,7 @@
 ## 项目要点
 
 - 无构建步骤：`lib/index.js`（host 半）与 `lib/client.js`（client 半）就是运行时代码，直接被 DSH 加载。
+- 插件以 **bundle** 形式发布：包根 `cordis.patch.yml` + `package.json` 的 `dsh.bundle.patch` 声明——`dsh plugin add` 后自动挂载，无需用户手动接线；改动插件 id/name 时必须同步更新 `cordis.patch.yml`。
 - 验证手段：`node --check lib/*.js`；host 半可 `node -e 'await import("./lib/index.js")'` 冒烟（无副作用）；最终以用户在浏览器中的实测为准。
 - 开发工作流、架构说明、打包与发布流程见 `CONTRIBUTING.md`；面向使用者的文档是 `README.md`。
 - 改动 `lib/` 代码后，发布前必须 bump `package.json` 的 `version`。

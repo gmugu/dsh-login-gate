@@ -10,7 +10,8 @@
 ├── lib/
 │   ├── index.js    # Host 半：全部服务端逻辑（纯 ESM JS，无构建步骤）
 │   └── client.js   # Client 半：浏览器设置卡片（window.__ModuleLoader__.load 包装）
-├── package.json    # dsh 插件清单（exports、dsh.client、files 发布范围、仓库元数据）
+├── cordis.patch.yml # bundle 接线（insert 本插件行；随包分发，装上即挂载）
+├── package.json    # dsh 插件清单（dsh.bundle.patch 声明、exports、files 发布范围、仓库元数据）
 ├── AGENTS.md       # AI 代理约定（提交规则、公开仓库卫生）
 ├── CONTRIBUTING.md # 本文件
 ├── README.md       # 面向使用者的文档（随 npm pack 进包，勿写本机绝对路径）
@@ -47,7 +48,7 @@
 2. 按约定经用户确认后提交、推送；
 3. 打 tag：`git tag vX.Y.Z && git push origin vX.Y.Z`；
 4. 打包：`npm pack --cache /tmp/.npm-cache`，产物 `dsh-login-gate-X.Y.Z.tgz`
-   （`files` 字段限定只含 `lib`、`README.md`、`LICENSE`）；
+   （`files` 字段限定只含 `lib`、`cordis.patch.yml`、`README.md`、`LICENSE`）；
 5. 在 GitHub Releases 挂上 tarball，接收方按 `README.md` 的 tarball 方式安装。
 
 （后续若发布到 npm 并提交至 awesome-dsh-plugin 精选列表，用户可经 dsh-market 一键安装。）

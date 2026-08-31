@@ -17,38 +17,50 @@ DSH 自带的 webserver 不提供任何鉴权：只要端口可达，任何人�
 
 ## 安装
 
-背景：DSH 把「安装」分成两件事——**装依赖**（pnpm 管）与**接进组合**（`cordis.patch.yml` 管）。
-两种方式装完依赖后都需手动接线（就两行），见「通用收尾」。
-
-### 方式一：从本仓库安装（git 依赖）
+一条命令（插件以 bundle 形式**自带接线**，`dsh` 会自动把它列入 profile 组合层，无需手动改任何配置）：
 
 ```sh
 dsh plugin --profile web add github:gmugu/dsh-login-gate
 ```
 
-### 方式二：tarball（离线/内网）
+重启 `dsh web`，首次访问设置访问密码（至少 8 位）。
 
-从 [Releases](https://github.com/gmugu/dsh-login-gate/releases) 下载 tarball 后安装：
+离线/内网机器用 tarball 同理：
 
 ```sh
 dsh plugin --profile web add /path/to/dsh-login-gate-x.y.z.tgz
 ```
 
-### 通用收尾（两种方式都需要）
+<details>
+<summary>原理（点开）</summary>
 
-编辑 `$DSH_HOME/profiles/web/cordis.patch.yml`（`$DSH_HOME` 默认 `~/.dsh`；若已存在
-`insert:` 列表则把两行并入其中）：
+本包根目录带 `cordis.patch.yml` 并在 `package.json` 声明 `dsh.bundle.patch`。
+`dsh plugin add`（内部即 pnpm add）完成后，dsh 会把声明了 `dsh.bundle` 的依赖自动
+追加进 profile 的 `dsh.profile.bundles` 层列表；loader 组合时应用包内 patch，
+把 `- { id: login-gate, name: dsh-login-gate }` 插入组合——接线随包自带。
 
-```yaml
-- insert:
-    - id: login-gate
-      name: dsh-login-gate
+</details>
+
+> **从旧版（手动接线）升级的用户**：若你的 profile `cordis.patch.yml` 里曾手动添加过
+> `- id: login-gate` 的 insert 条目，请删除它，避免与包内接线重复挂载。
+> 装了 [dsh-market](https://github.com/dsh-market/dsh-market) 插件市场的机器，待本插件
+> 上架精选目录后也可在 设置 → 插件市场 一键安装。
+
+## 卸载
+
+```sh
+dsh plugin --profile web remove dsh-login-gate
 ```
 
-重启 `dsh web`，首次访问设置访问密码（至少 8 位）。
+重启 `dsh web`。与安装同理，dsh 会自动把它从 profile 组合层移除，无需手动清理接线。
 
-> 装了 [dsh-market](https://github.com/dsh-market/dsh-market) 插件市场的机器，待本插件
-> 上架精选目录后可在 设置 → 插件市场 一键安装（依赖+接线全自动）。
+- **旧版手动接线用户**：请同时删除 profile `cordis.patch.yml` 里手动的 `- id: login-gate` insert 条目，否则 loader 找不到已卸载的包。
+- **残留数据**（重装时想沿用原密码就保留）：
+  - 凭据文件 `$DSH_HOME/storages/login-gate.json`（密码哈希 + 签名 secret）
+  - `$DSH_HOME/settings.yaml` 里的 `login-gate:` 设置段（会话时长等）
+
+  需要彻底清理时手动删除即可。
+- ⚠️ 卸载后 Web GUI 恢复为**无鉴权**状态——端口可达即等于可访问，请确认网络环境可接受。
 
 ## 首次运行与密码找回
 
