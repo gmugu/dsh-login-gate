@@ -12,8 +12,11 @@ DSH 自带的 webserver 不提供任何鉴权：只要端口可达，任何人�
 - 异步 scrypt 密码哈希（新密码 N=2^16，旧低成本哈希登录成功后自动升级），不阻塞事件循环
 - 按 IP 的登录失败限速（15 分钟窗口内 5 次失败封禁 15 分钟）
 - 首次访问进入「设置访问密码」首次运行流程——密码在浏览器侧设置，本机只存哈希
-- 「登录门禁」设置卡片：会话时长、修改/重置密码、退出登录，改动在线生效
+- 「登录门禁」设置卡片：会话时长（在线改，即时生效）、修改/重置密码、退出登录
+- 会话时长（`ttlHours`）与反代开关（`trustProxy`）为 volatile 配置字段：卡片与侧栏「插件」面板 → dsh-login-gate → login-gate 的配置表单是同一份数据的两个入口，均持久化到 profile、无需重启
 - 修改密码自动轮换签名 secret，其他已登录会话立即失效
+
+> 版本要求：v1.6.x 适配 dsh **0.1.7** 起（settings 服务重构为 Config 表单投影）；dsh 0.1.5 请用 v1.5.x。
 
 ## 安装
 
@@ -57,7 +60,7 @@ dsh plugin --profile web remove dsh-login-gate
 - **旧版手动接线用户**：请同时删除 profile `cordis.patch.yml` 里手动的 `- id: login-gate` insert 条目，否则 loader 找不到已卸载的包。
 - **残留数据**（重装时想沿用原密码就保留）：
   - 凭据文件 `$DSH_HOME/storages/login-gate.json`（密码哈希 + 签名 secret）
-  - `$DSH_HOME/settings.yaml` 里的 `login-gate:` 设置段（会话时长等）
+  - profile 配置里 `login-gate` 条目的 `config`（会话时长等；dsh 0.1.5 及更早存于 `$DSH_HOME/settings.yaml` 的段会在 0.1.7 首次启动时自动迁入 profile）
 
   需要彻底清理时手动删除即可。
 - ⚠️ 卸载后 Web GUI 恢复为**无鉴权**状态——端口可达即等于可访问，请确认网络环境可接受。
@@ -75,11 +78,11 @@ dsh plugin --profile web remove dsh-login-gate
 
 | 字段 | 默认 | 说明 |
 |---|---|---|
-| `ttlHours` | 12 | 会话时长（小时）；设置卡片里的在线值会覆盖它 |
+| `ttlHours` | 12 | 会话时长（小时）；volatile 字段，装好后可在「登录门禁」卡片或插件配置表单在线改 |
 | `cookieName` | `__dsh_gate` | 会话 Cookie 名 |
 | `credentialsFile` | `$DSH_HOME/storages/login-gate.json` | 凭据文件路径 |
 | `resetPassword` | `false` | 启动即清除已存密码，回到首次设置 |
-| `trustProxy` | `false` | 位于反向代理后时置 `true`，按 `X-Forwarded-For` 取客户端 IP |
+| `trustProxy` | `false` | 位于反向代理后时置 `true`，按 `X-Forwarded-For` 取客户端 IP；volatile，可在线改 |
 | `disableBrowserTokenAuth` | `true` | 中和 dsh 内建浏览器令牌鉴权（/api 的 401 与首页令牌交换）；登录门已覆盖身份职责，Host/Origin 信任栅栏（403）始终保留 |
 
 示例：
