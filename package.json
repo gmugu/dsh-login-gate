@@ -1,7 +1,7 @@
 {
   "name": "dsh-login-gate",
-  "version": "1.6.2",
-  "description": "Cookie-session login gate for the DeepSeek Harness Web GUI: HMAC-signed sessions, async scrypt hashing with per-IP rate limiting, live settings (session TTL / trust-proxy), and an in-app settings card for resetting and changing the password.",
+  "version": "1.7.0",
+  "description": "Cookie-session login gate for the DeepSeek Harness Web GUI: HMAC-signed sessions, async scrypt hashing with per-IP rate limiting, live settings (session TTL / trust-proxy), LAN-trusted settings pages, and an in-app settings card for resetting and changing the password.",
   "type": "module",
   "main": "lib/index.js",
   "files": [

@@ -15,6 +15,7 @@ DSH 自带的 webserver 不提供任何鉴权：只要端口可达，任何人�
 - 「登录门禁」设置卡片：会话时长（在线改，即时生效）、修改/重置密码、退出登录
 - 会话时长（`ttlHours`）与反代开关（`trustProxy`）为 volatile 配置字段：卡片与侧栏「插件」面板 → dsh-login-gate → login-gate 的配置表单是同一份数据的两个入口，均持久化到 profile、无需重启
 - 修改密码自动轮换签名 secret，其他已登录会话立即失效
+- 局域网设置页修复（`trustLanSettings`）：非 localhost 访问时「模型 / 通用设置 / 插件配置」默认照常可用，见[局域网访问](#局域网访问)
 
 > 版本要求：v1.6.x 适配 dsh **0.1.7** 起（settings 服务重构为 Config 表单投影）；dsh 0.1.5 请用 v1.5.x。
 
@@ -72,6 +73,26 @@ dsh plugin --profile web remove dsh-login-gate
 - **忘记密码**：停止 dsh，删除该凭据文件后重启，即回到首次设置流程。
 - **日常管理**：登录后打开 设置 → 登录门禁。
 
+## 局域网访问
+
+从局域网地址（如 `http://192.168.2.128:3080`）访问时，dsh 默认把所有非
+localhost 页面视为不可信，浏览器端拒绝加载宿主设置文档——「设置 → 模型」报
+`加载提供商目录失败：settings are unavailable in this browser`，通用设置与
+插件配置表单同样不可用。这是 dsh 客户端的设计行为，与网络或登录门无关。
+
+本插件默认修复它：向首页注入 `__DSH_TRANSPORT__.ownsHost = true`（dsh 桌面端
+使用的同一信任通道），理由是能打开这个页面的访问者都已通过密码认证。插件的
+配置表单开关 `trustLanSettings` 可关闭该行为（改动在插件重挂载后、下次加载
+页面时生效）。
+
+两点边界：
+
+- **用域名/主机名访问**（而非 IP 字面量）时，dsh 的 Host/Origin 403 信任栅栏
+  仍然生效，`/api` 请求会被拒；需按 dsh 文档用 `--trusted-host` 声明该域名。
+  本插件不放宽这道栅栏。
+- **经反向代理访问**建议同时开启 `trustProxy: true`，登录限速才能按真实来源
+  IP（`X-Forwarded-For`）而非代理地址计算。
+
 ## 配置参考
 
 `cordis.patch.yml` 插入项可传 `config:`（全部可选）：
@@ -84,6 +105,7 @@ dsh plugin --profile web remove dsh-login-gate
 | `resetPassword` | `false` | 启动即清除已存密码，回到首次设置 |
 | `trustProxy` | `false` | 位于反向代理后时置 `true`，按 `X-Forwarded-For` 取客户端 IP；volatile，可在线改 |
 | `disableBrowserTokenAuth` | `true` | 中和 dsh 内建浏览器令牌鉴权（/api 的 401 与首页令牌交换）；登录门已覆盖身份职责，Host/Origin 信任栅栏（403）始终保留 |
+| `trustLanSettings` | `true` | 信任本门禁保护下的非 localhost 页面，向首页注入 dsh 桌面端同款信任标记（`__DSH_TRANSPORT__.ownsHost`），使「模型 / 通用设置 / 插件配置」在局域网地址下照常工作；置 `false` 恢复 dsh 原行为 |
 
 示例：
 
@@ -103,6 +125,7 @@ dsh plugin --profile web remove dsh-login-gate
 - 登录失败统一延迟响应并按来源 IP 限速
 - `/__auth/reset-password`、`/__auth/change-password` 均需有效会话才能调用
 - 门禁对宿主 webserver 的注册方法打补丁实现全量包网，teardown 时逐项还原
+- 局域网设置页修复只放宽浏览器端的页面信任判定，不触碰 dsh 的 Host/Origin 403 栅栏；设置文档仅对已通过密码认证的页面开放
 
 ## 开发
 
