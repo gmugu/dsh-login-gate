@@ -1,0 +1,6 @@
+{
+	"meta": {
+		"title": "Login Gate",
+		"description": "Cookie-session password gate for the DeepSeek Harness Web GUI: HMAC-signed sessions, async scrypt hashing with per-IP rate limiting, live session-TTL settings, LAN-trusted settings pages, and an in-app card for changing or resetting the password."
+	}
+}

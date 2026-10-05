@@ -1,0 +1,6 @@
+{
+	"meta": {
+		"title": "登录门禁",
+		"description": "为 DeepSeek Harness Web GUI 加上密码登录门禁：HMAC 签名会话、异步 scrypt 密码哈希与按 IP 限流、会话时长在线可调、LAN 页面信任设置文档，以及应用内修改/重置密码卡片。"
+	}
+}
